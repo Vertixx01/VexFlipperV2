@@ -1,15 +1,20 @@
+const motdParser = require('@sfirew/mc-motd-parser');
+const { millify } = require("millify");
+const config = require('../config.json');
+
 class Auctions {
     constructor() {
-        this.MAX = 500000000;
-        this.MIN = 5;
-        this.multiplier = 0.84;
-        this.margin = 3;
-        this.profit = 2000000;
+        this.MAX = config.flipper.maxPrice;
+        this.MIN = config.flipper.minPrice;
+        this.undercut = config.flipper.undercut;
+        this.margin = config.flipper.minProfitPercent;
+        this.profit = config.flipper.minProfit;
         this.auctions = [];
         this.totalAuctions = 0;
         this.filteredAuctions = [];
         this.done = false;
         this.finalAuctions = [];
+        this.blacklist = config.filter.blacklistedWords;
     }
 
 
@@ -23,7 +28,6 @@ class Auctions {
                     currentPage++;
                     if (currentPage == pages.totalPages) {
                         done = true;
-                        console.log(`Total pages: ${pages.totalPages}`);
                     }
                 });
             }));
@@ -54,41 +58,44 @@ class Auctions {
         });
         const items = {};
         this.filteredAuctions.forEach(auction => {
-            if (!items[auction.item_name]) {
+            if (!items.hasOwnProperty(auction.item_name)) {
                 items[auction.item_name] = [auction];
-            } else {
+            } else if (Array.isArray(items[auction.item_name])) {
                 items[auction.item_name].push(auction);
             }
-        });
+        });        
         for (const item in items) {
             var cheapest = [];
-            var tier = [];
-            if (items[item].length >= 10) {
+            if (items[item].length > config.filter.minItems) {
                 items[item].forEach(auction => {
-                    cheapest.push({ price: auction.starting_bid, tier: auction.tier });
+                    cheapest.push({ price: auction.starting_bid, tier: auction.tier, readable: millify(auction.starting_bid) });
                 });
                 cheapest.sort((a, b) => a.price - b.price);
                 cheapest = cheapest.slice(0, 2);
                 if (cheapest.length == 2) {
-                    const differnce = Math.round(cheapest[1].price * this.multiplier - cheapest[0].price);
+                    const differnce = Math.round(cheapest[1].price * this.undercut - cheapest[0].price);
+                    const differenceReadable = millify(differnce);
                     const margin = Math.round(differnce / cheapest[0].price * 100);
                     if (differnce > this.profit && margin > this.margin && cheapest[0].tier == cheapest[1].tier) {
-                        this.finalAuctions.push({
-                            name: items[item][0].item_name,
-                            tier: items[item][0].tier,
-                            price: cheapest[0].price,
-                            price2: cheapest[1].price,
-                            difference: differnce,
-                            margin: margin,
-                            ahid: items[item][0].uuid,
-                            lore: items[item][0].item_lore
-                        });
+                        if (!this.blacklistRemover(items[item][0].item_name) && !this.blacklistRemover(items[item][0].item_lore)) {
+                            this.finalAuctions.push({
+                                name: items[item][0].item_name,
+                                tier: cheapest[0].tier,
+                                price: cheapest[0],
+                                price2: cheapest[1],
+                                difference: differnce,
+                                differenceReadable: differenceReadable,
+                                margin: margin,
+                                ahid: `/viewauction ${items[item][0].uuid}`,
+                                lore: items[item][0].item_lore,
+                                htmllore: motdParser.textToHTML(items[item][0].item_lore)
+                            });
+                        }
                     }
                 }
                 this.finalAuctions.sort((a, b) => a.margin - b.margin);
             }
         }
-        console.log(`Total auctions: ${this.finalAuctions.length}`);
         this.done = true;
         return new Promise((resolve, reject) => {
             const interval = setInterval(() => {
@@ -99,7 +106,22 @@ class Auctions {
             }, 1000);
         });
     }
+
+    blacklistRemover(item) {
+        if(config.filter.blacklist) {
+            var blacklisted = false;
+            if (!this.blacklist.length == 0) {
+                this.blacklist.forEach(word => {
+                    if (item.includes(word)) {
+                        blacklisted = true;
+                    }
+                });
+                return blacklisted;
+            } else return false;
+        } else return false;
+    }
 }
+
 
 
 module.exports = function () { return new Auctions(); };

@@ -4,18 +4,28 @@ let colors = require('colors');
 const motdParser = require('@sfirew/mc-motd-parser');
 const fs = require('fs');
 const api = require('./api/api');
+const { bot } = require('./bot/bot');
 
 const ui = new UI();
 ui.logo();
 
 const main = async () => {
     api();
-    var htmlresults = [];
     console.log('Starting...'.yellow);
     Auctions().getAuctions().then(auctions => {
         Auctions().fixAuctions(auctions).then(fixedAuctions => {
-            console.log('Done!'.green);
-            fixedAuctions.forEach(auction => {
+            // console.log(fixedAuctions);
+        })
+    });
+}
+
+
+main();
+
+
+/**
+ * var htmlresults = [];
+fixedAuctions.forEach(auction => {
                 htmlresults.push(`
                 <div>
                     <span style="color:#FFFFFF; font-weight: bold;">${auction.name}<br></span>${motdParser.textToHTML(auction.lore)}
@@ -51,8 +61,4 @@ const main = async () => {
                 console.log('Saved!');
             });
         });
-    });
-}
-
-
-main();
+ */

@@ -1,0 +1,19 @@
+{
+    "hosting": {
+        "port": 8080
+    },
+    "filter": {
+        "enabled": true,
+        "blacklist": false,
+        "blacklistedWords": ["✦", "Skin"],
+        "pets": true,
+        "minItems": 2
+    },
+    "flipper": {
+        "minPrice": 5,
+        "maxPrice": 500000000,
+        "minProfit": 25000000,
+        "undercut": 0.85,
+        "minProfitPercent": 5
+    }
+}
